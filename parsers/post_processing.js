@@ -50,13 +50,19 @@ module.exports = {
 
                 let buffer = await axios({ url: src, responseType: "arraybuffer" });
                 buffer = Buffer.from(buffer.data, 'binary');
-                const file = await sharp(buffer).resize(644).jpeg({
+                const sharpImg = sharp(buffer);
+
+                const metadata = await sharpImg.metadata();
+                if (metadata.width < 300 || metadata.size < 10000) {
+                    throw new Error('Buffer Img Width < 300');
+                }
+                const file = await sharpImg.resize(644).jpeg({
                     quality: 70,
                     chromaSubsampling: '4:4:4'
                 }).toFile(dir + '/' + fileName);
                 // console.log(file);
 
-                if (file && file.size > 15000) {
+                if (file && file.size > 10000) {
                     img.setAttribute('src', '/wp-content/uploads/posts/' + slug + '/' + fileName);
                     img.removeAttribute('data-src');
                     img.removeAttribute('data-lazy-src');
@@ -79,7 +85,7 @@ module.exports = {
                     throw new Error ("Can't download/resize image, no info received from sharp")
                 }
             } catch ( err ) {
-                // console.log('Can\'t download/resize');
+                console.log('Can\'t download/resize');
                 img.remove();
             }
 
