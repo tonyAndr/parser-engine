@@ -11,6 +11,7 @@ const { getTasks, getArticles, countArticles, updateTask, updateArticle } = requ
 const { translateTo } = require('./parsers/translater');
 const { processDownloadStructure } = require('./parsers/article_structure/download');
 const CronJob = require('cron').CronJob;
+const translate = require('@vitalets/google-translate-api');
 
 const parser = async (task, articles) => {
     try {
@@ -33,8 +34,12 @@ const parser = async (task, articles) => {
             let domain = task.domain;
             // create slug
             const tokenizer = new natural.WordTokenizer();
+            let keyword_translated = await translate(keyword, { to: 'es' });
+            console.log(keyword_translated);
+            keyword_translated = keyword_translated.text;
+
             const slug = tokenizer
-                .tokenize(cyrillicToTranslit().transform(keyword)) // cyr to translit + tokenizing
+                .tokenize(keyword_translated) //  tokenizing
                 .slice(0, 8) // take maximum 9 words
                 .join('-') // slug-like glue
                 .toLowerCase();
@@ -100,22 +105,23 @@ const parser = async (task, articles) => {
                     throw new Error('Not enough text length, skipped');
                 }
                 
-                let meta = getMeta(keyword, parsedContent, finalText);
+                let meta = getMeta(keyword_translated, parsedContent, finalText);
+                meta.title = await translate(meta.title, { to: 'es' });
+                meta.description = await translate(meta.description, { to: 'es' });
 
-                // if (task.translateTo && task.translateTo !== 'no') {
-                //     console.log("[" + new Date().toISOString() + "] TRANSLATING ...")
-                //     finalContent = translateTo(finalContent, task.translateTo);
-                // }
-
+                if (task.translateTo && task.translateTo !== 'no') {
+                    console.log("[" + new Date().toISOString() + "] TRANSLATING ...")
+                    finalContent = await translateTo(finalContent, task.translateTo);
+                }
                 
                 console.log("[" + new Date().toISOString() + "] PROCESSING IMGS ...")
-                let processedImages = await imgProcessing(domain, keyword, slug, finalContent); // returns [content, imgCount]
+                let processedImages = await imgProcessing(domain, keyword_translated, slug, finalContent); // returns [content, imgCount]
                 
                 finalContent = processedImages[0];
                 console.log("[" + new Date().toISOString() + "] PARSING DONE ...")
                 // throw new Error('stop here');
 
-                let updatedArt = await updateArticle(article.id, { is_done: true, title_h1: meta.h1, title_seo: meta.title, description_seo: meta.description, content_body: finalContent, text_body: finalText, text_length: finalContent.length, imgsCount: processedImages[1] });
+                let updatedArt = await updateArticle(article.id, { is_done: true, title_h1: meta.h1, title_seo: meta.title.text, description_seo: meta.description.text, content_body: finalContent, text_body: finalText, text_length: finalContent.length, imgsCount: processedImages[1] });
                 console.log("[" + new Date().toISOString() + "] TRYING TO UPLOAD ...");
 
                 //console.log(finalContent);
@@ -159,14 +165,14 @@ const parser = async (task, articles) => {
 const startParsing = async () => {
     const MAX_TASKS_RUNNING = 2;
     // check what is running
-    let tasksInProgress = await getTasks({ is_processing: true });
+    // let tasksInProgress = await getTasks({ is_processing: true });
 
-    if (tasksInProgress.length > MAX_TASKS_RUNNING - 1) {
-        console.log('### TASKS IN PROGRESS: ' + tasksInProgress.length);
-        return false;
-    }
+    // if (tasksInProgress.length > MAX_TASKS_RUNNING - 1) {
+    //     console.log('### TASKS IN PROGRESS: ' + tasksInProgress.length);
+    //     return false;
+    // }
     // find tasks to run
-    let tasksToProcess = await getTasks({ is_enabled: true, is_finished: false, is_processing: false });
+    let tasksToProcess = await getTasks({ id: 33 });
 
     if (tasksToProcess === false) {
         console.log('### SERVER MIGHT BE DOWN...');
@@ -240,7 +246,9 @@ const startJobsScheduler = () => {
         }
     }, null, true);
 
-    kill.start();
+     kill.start();
 }
-startJobsScheduler();
+//startJobsScheduler();
+
+startParsing();
 

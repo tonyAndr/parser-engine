@@ -37,8 +37,8 @@ const extractHeaders = (parsedContent) => {
                     
                     if (match !== null) {                        
                         let h2Text = match[1].trim();
-                        let musor = h2Text.match(/Комментарии|Коментарии|Комментирова|Отзыв|Обсужден|Похожие темы|^Читать|Будет интересно|^Будет полезно|Читайте|^Содержание|Оглавлен|Узнайте|Рекомендуем|Еще по теме|Смотрите так|Похожие материалы|Что еще почитать|Остались вопросы/gi); 
-                        if (musor === null) {
+                        let musor = null !== h2Text.match(/Комментарии|Коментарии|Комментирова|Отзыв|Обсужден|Похожие темы|^Читать|Будет интересно|^Будет полезно|Читайте|^Содержание|Оглавлен|Узнайте|Рекомендуем|Еще по теме|Смотрите так|Похожие материалы|Похожие статьи|Похожие записи|Что еще почитать|Вам будут|Вам будет|Будет интересно|Будут интересны|Интересные статьи|Интересные материалы|Где купить подарки|Остались вопросы|Новост|Статьи для вас|в тему|Самое читаемое/gi); 
+                        if (!musor && !isHeadersList(block)) {
                             headersArray.push({
                                 url: key,
                                 h2: h2Text,
@@ -66,6 +66,17 @@ const extractHeaders = (parsedContent) => {
     introText = parsedContent[introIndexKey].contentBlocks.intro;
 
     return headersArray;
+}
+
+// check if block looks like a list of links with many headers and not much text
+const isHeadersList = (block) => {
+    let h_match = block.match(/<(h3|h4|h5|h6)/ig);
+    let img_match = block.match(/<img/ig);
+    if (h_match !== null && h_match.length >= 5) {
+        if (block.length < 2000 && (img_match === null || img_match.length === 1))
+            return true;
+    }
+    return false;
 }
 
 // removes short tokens (<=2 chars) and counts commonly used words
@@ -276,44 +287,7 @@ const htmlComplexityScore = (block, isIntro = false) => {
     return coef;
 }
 
-const removeGarbageDOM = (htmlContent) => {
-    let dom = new JSDOM(htmlContent);
-    let document = dom.window.document;
 
-    // remove bad imgs
-    document.querySelectorAll('img[src*=".gif"]').forEach(node => { node.remove() })
-    document.querySelectorAll('img[src*="admitad"]').forEach(node => { node.remove() })
-    document.querySelectorAll('img[src*="tizer"]').forEach(node => { node.remove() })
-    document.querySelectorAll('img[src*="placeholder"]').forEach(node => { node.remove() })
-
-    // bad <p>
-    let conditions = new RegExp(/\.com|\.ru|\.net|\.рф|\.club|\.info|\.org|Подробнее читайте|Читайте здесь|Больше информации здесь|Узнайте здесь|Редакция рекомендует|Похожие рецепты:|Подборки рецептов:|Сохраните себе|Источник:|Источники:|Список источников:|Полезные ссылки|Задать вопрос|Автор:|Авторы:|вернуться на главную|content|toc|В тренде|Полезно знать|подборка статей|на сайте|читать также|почитать в статье|прочитать в статье|Тизерная сеть|Будет интересно:|Будет полезно:|подписывайтесь|поделиться|подробнее в этой статье|Кстати, на нашем сайте|http|Рекомендуемые статьи|Статьи по теме|Автор публикации|Авторы|Понравилась статья|Также рекомендуем просмотреть|Похожие темы|Предыдущая запись|Следующая запись|Поделитесь страницей|Поделитесь статьей|Рекомендуем|Похожие материалы|Еще статьи|Заметили опечатку на сайте|комментировать|Написать комментарий|Главная страница|Поделитесь|Поделись|Если вы нашли ошибку, пожалуйста, выделите фрагмент текста|Enter|Смотрите ещё:|Смотрите также:|Также смотрите|Узнайте также:|Читайте также:|смотреть также|Подписаться|Редактировать статью|Поделись с друзьями|Что еще почитать|Добавить комментарий|Сохраните статью себе на страницу:|Присоединяйтесь к обсуждению:|Читайте нас|Поделились|вернуться к содержанию|Что еще почитать|Присоединяйтесь к обсуждению|Оцените:|Оценить:|Не забудьте поделиться с друзьями|комментари|Рубрика:|Рубрики:|Категории:|Категория:|Автор статьи|Авторы|обработку персональных данных|Рейтинг статьи|рейтинг:|Читайте так же:|Еще статьи|По теме|содержание статьи|содержание записи|Рекомендуем почитать|Оцените статью|оглавлени|похожие статьи|Рекомендуем вам еще:|Рекомендуем вам:|Рекомендуем еще:|Рекомендуем еще записи по теме:|к содержанию|Читать статью полностью|Читать полностью|Наверх|рекламная сеть|^содержание:|^Содержание|Оглавление|оглавление:|VKontakte|теги:|метки:|вконтакте|Твитнуть|Facebook|Twitter|Фейсбук|Мой мир|Telegram|Pinterest|whatsapp|загрузка|Загрузка|Нет комментариев|Добавить отзыв|Оставить комментарий|Одноклассники|rating|оценок, среднее|loading|это интересно/, 'i');
-    document.querySelectorAll('p').forEach(p => {
-        if (p.textContent && p.textContent.match(conditions))
-            p.remove(p)
-    });
-    // bad textnodes
-    document.querySelectorAll('*').forEach(node => {
-        if (node.nodeName && node.nodeName === "#text") {
-            if (node.nodeValue && node.nodeValue.match(conditions))
-                node.remove(node);
-        }
-    })
-
-    // Remove list numbers from h2
-    document.querySelectorAll('h2').forEach(h2 => {
-        h2.outerHTML = h2.outerHTML.replace(/\d+[.)]?\s/, '');
-    });
-
-    // remove empty blockquotes
-    document.querySelectorAll('blockquote').forEach(bq => {
-        if (bq.textContent.trim().length === 0) {
-            bq.remove(bq);
-        }
-    });
-
-    return document.querySelector('body').innerHTML;
-}
 
 const buildContentBody = (parsedContent, headersArray, optimizedIndices) => {
     let sortedBlocks = [];
@@ -347,13 +321,7 @@ const buildContentBody = (parsedContent, headersArray, optimizedIndices) => {
     return [sortedBlocks, usedDonors];
 }
 
-// Simply return textContent
-const removeHtmlTags = (html) => {
-    let dom = new JSDOM(html);
-    let document = dom.window.document;
 
-    return document.documentElement.textContent;
-}
 
 module.exports = {
     processBlocks: (parsedContent) => {
@@ -369,18 +337,14 @@ module.exports = {
         let optimizedIndices = optimizeGroups(parsedContent, headersArray, groupedIndices);
         let [sortedContentBlocks, usedDonors] = buildContentBody(parsedContent, headersArray, optimizedIndices);
 
-        let finalHtml = removeGarbageDOM(sortedContentBlocks.join(' '));
-        let finalText = removeHtmlTags(finalHtml);
-
-        // add more tag
-        finalHtml = finalHtml.replace(/<\/p>/i, '</p><!--more-->');
+        let dirtyFinalHTML = sortedContentBlocks.join(' ');
 
         // finalText = removeGarbageDOM(finalText);
         // console.log(finalText);
-        console.log("Text length: " + finalHtml.length);
+        console.log("HTML length: " + dirtyFinalHTML.length);
         console.log("Initial blocks count: " + headersArray.length);
         console.log("Final blocks count: " + sortedContentBlocks.length);
-        return [finalHtml, finalText, usedDonors];
+        return [dirtyFinalHTML, usedDonors];
     },
 
 }

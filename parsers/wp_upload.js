@@ -109,24 +109,27 @@ const uploadMedia = async (task, article, wp, wp_id) => {
 
         // upload featured image
         //'./tmp_images/' + task.domain + '/' + article.slug + '/' + article.slug + '_0.jpg'
-        let media = await wp.media().file(successful[0]).create({
-            title: article.keyword,
-            post_id: wp_id
-        }) 
-        // console.log('media: ' + media)
+        if (successful.length > 0) {
 
-        if (media.id) {
-            let updatedPost = await wp.posts().id(wp_id).update({
-                featured_media: media.id
-            })
-
-            if (!updatedPost.id) {
-                throw new Error('Can\'t update featured image in post');
+            let media = await wp.media().file(successful[0]).create({
+                title: article.keyword,
+                post_id: wp_id
+            }) 
+            // console.log('media: ' + media)
+    
+            if (media.id) {
+                let updatedPost = await wp.posts().id(wp_id).update({
+                    featured_media: media.id
+                })
+    
+                if (!updatedPost.id) {
+                    throw new Error('Can\'t update featured image in post');
+                } else {
+                    console.log('-- FEATURED IMG UPDATED')
+                }
             } else {
-                console.log('-- FEATURED IMG UPDATED')
+                throw new Error('Can\'t create featured image');
             }
-        } else {
-            throw new Error('Can\'t create featured image');
         }
 
         // let files = await ssh.putFiles([{ local: './tmp_images/'+task.domain + '/' +article.slug, remote:  }]);
@@ -155,7 +158,7 @@ module.exports = {
         try {
             let wp_id = 0;
 
-            if (exists) {
+            if (exists || article.wp_id) {
                 wp_id = article.wp_id;
                 console.log('-- POST ALREADY EXISTS')
             } else {
@@ -179,6 +182,8 @@ module.exports = {
                 if (mediaUploaded) {
                     await updateArticle(article.id, { is_uploaded: true });
                     rimraf.sync('./tmp_images/' + task.domain + '/' + article.slug);
+                } else {
+                    throw new Error('Media can\'t be uploaded');
                 }
             } else {
                 await updateArticle(article.id, { is_uploaded: true });

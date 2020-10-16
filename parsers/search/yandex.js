@@ -1,16 +1,43 @@
 const fetch = require("node-fetch");
 const xml2js = require('xml2js');
-const API_URI = "https://yandex.ru/search/xml?user=marafon101kurs&key=03.442230827:3d63f2a53f26cf6587f12dd31469e01f&l10n=ru&sortby=rlv&filter=moderate&lr=225&groupby=attr%3Dd.mode%3Ddeep.groups-on-page%3D15.docs-in-group%3D1";
+
+const buildAPIUri = (options) => {
+    const API_URI = "https://yandex.ru/search/xml?user=marafon101kurs&key=03.442230827:3d63f2a53f26cf6587f12dd31469e01f";
+    let query = '';
+    for (let opt in options) {
+        if (options.hasOwnProperty(opt)) {
+            if (opt === 'docs_num') {
+                query += `&groupby=attr=d.mode=deep.groups-on-page=${options[opt]}.docs-in-group=1`
+            } else {
+                query += `&${opt}=${options[opt]}`
+            }
+        }
+    }
+    // let encodedQuery = encodeURIComponent(query);
+
+    return new URL(API_URI + query);
+}
 
 module.exports = {
-    searchYA: async (keyword) => {
-        let query = new URL(API_URI + "&query=" + keyword);
+    searchYA: async (keyword, task) => {
+        let apiOptions = {
+            'query': keyword,
+            'l10n': 'ru',
+            'sortby': 'rlv',
+            'filter': 'moderate',
+            'lr': 225,
+            'docs_num': task.parser_type === 'download' ? 20 : 15 
+        }
+        let apiURL = buildAPIUri(apiOptions);
 
         // temp blacklist
-        let blacklist = ['medside','fb\\.ru','youtu', 'wiki', 'yandex', '\\.pdf', '\\.docx', '\\.rtf'];
+        let combinedBlacklist = ['torrent', 'povar.ru', 'gidpodarit.ru','fb\\.ru','youtu', 'wiki', 'yandex', '\\.pdf', '\\.docx', '\\.rtf'];
+
+        if (task.blacklist)
+            combinedBlacklist = combinedBlacklist.concat(task.blacklist.trim().split(","));
 
         try {
-            let request = await fetch(query);
+            let request = await fetch(apiURL);
             request = await request.text();
             let parsedJSON = await xml2js.parseStringPromise(request, { trim: true });
             let urls = [];
@@ -20,7 +47,7 @@ module.exports = {
                 throw new Error("Urls not found")
             }
 
-            urls = removeBlackListed(urls, blacklist);
+            urls = removeBlackListed(urls, combinedBlacklist);
 
             return urls;
         } catch (err) {
