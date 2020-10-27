@@ -25,16 +25,20 @@ const getHTML = async (url) => {
     }
 }
 
-const initialSanitizationAndRepairing = (DOMPurify, content, remove_links = true) => {
+const initialSanitizationAndRepairing = (DOMPurify, content, remove_links = true, remove_iframes = false) => {
     let forbidTags = ['style', 'svg'];
+    let allowTags = ['meta', 'h1', 'noscript'];
     if (remove_links) {
         forbidTags.push('a');
+    }
+    if (!remove_iframes) {
+        allowTags.push('iframe');
     }
     const clean = DOMPurify.sanitize(content, {
         WHOLE_DOCUMENT: true,
         FORBID_TAGS: forbidTags,
         FORBID_ATTR: ['style', 'id', 'srcset', 'sizes', 'data-flat-attr'],
-        ADD_TAGS: ['meta', 'h1', 'noscript', 'iframe'],
+        ADD_TAGS: allowTags,
         ADD_ATTR: ['content']
     });
     return clean;
@@ -205,8 +209,9 @@ const prepareDonorBlocks = async (url, task) => {
         return false;
     }
 
+    const removeIframes = task.translateTo && task.translateTo !== 'no' ? true : false; 
     // Sanitize raw html before article extraction with Readability
-    const clean = initialSanitizationAndRepairing(DOMPurify, pageSrc, task.remove_links);
+    const clean = initialSanitizationAndRepairing(DOMPurify, pageSrc, task.remove_links, removeIframes);
 
     dom = new JSDOM(clean, {url});
     let document = dom.window.document;

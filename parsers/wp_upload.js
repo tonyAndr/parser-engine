@@ -9,6 +9,7 @@ const rimraf = require("rimraf");
 const axios = require('axios');
 const qs = require('qs');
 const { updateArticle } = require('../apiCalls');
+const translate = require('@vitalets/google-translate-api');
 
 const createCat = async (wp, name) => {
     try {
@@ -26,10 +27,25 @@ const createCat = async (wp, name) => {
     }
 }
 
+const translateCatName = async (task, catName) => {
+    if (task.translateTo && task.translateTo !== 'no' && task.translateCategory) {
+        try {
+            let translated = await translate(catName, { to: task.translateTo });
+            translated = translated.text.trim();
+            translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+            return translated;
+        } catch (error) {
+            console.log(error);
+            console.log('Category translation failed');
+        }
+    } 
+    return catName;
+}
+
 const createPost = async (task, article, wp) => {
     try {
-        
-        let categoryId = await createCat(wp, article.category);
+        let catName = await translateCatName(task, article.category);
+        let categoryId = await createCat(wp, catName);
 
         let postObject = {
             // "title" and "content" are the only required properties
@@ -38,7 +54,7 @@ const createPost = async (task, article, wp) => {
             slug: article.slug,
             // Post will be created as a draft by default if a specific "status"
             // is not specified
-            status: 'publish',
+            status: task.publish_status ? 'publish' : 'draft',
             categories: categoryId,
             meta: {
                 '_aioseop_title': article.title_seo,
