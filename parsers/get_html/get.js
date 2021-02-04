@@ -26,7 +26,7 @@ const getHTML = async (url) => {
 }
 
 const initialSanitizationAndRepairing = (DOMPurify, content, remove_links = true, remove_iframes = false) => {
-    let forbidTags = ['style', 'svg'];
+    let forbidTags = ['style', 'svg', 'script'];
     let allowTags = ['meta', 'h1', 'noscript'];
     if (remove_links) {
         forbidTags.push('a');

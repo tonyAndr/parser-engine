@@ -251,7 +251,7 @@ const startParsing = async () => {
             await APICalls.updateTask(task.id, { is_started: true, is_processing: true });
         
             let articles = await APICalls.getArticles({ task: task.id, is_uploaded: false, is_skipped: false });
-            let dbCount = await APICalls.countArticles({ task: task.id, is_uploaded: false, is_skipped: false });
+            // let dbCount = await APICalls.countArticles({ task: task.id, is_uploaded: false, is_skipped: false });
         
             if (articles.length !== 0) {
                 try {

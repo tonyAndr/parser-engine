@@ -51,7 +51,10 @@ module.exports = {
             timeout: 3000000
         });
         // setting our content to translate 
-        await page.setContent(htmlText);
+        // await page.setContent(htmlText);
+        let eval = await page.evaluate((htmlText) => {
+            document.body.innerHTML = htmlText;
+        }, htmlText);
 
         // adjust screen size
         await page.setViewport({

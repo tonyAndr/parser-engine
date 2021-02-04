@@ -93,7 +93,7 @@ const uploadMedia = async (task, article, wp, wp_id) => {
             host: task.server_domain,
             port: 7248,
             username: task.ssh_user,
-            password: task.ssh_password
+            password: task.ssh_password,
         })
         
         const failed = []
